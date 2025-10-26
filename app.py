@@ -20,7 +20,7 @@ st.title("🫀 ECG Classification + Explainable AI")
 # -----------------------
 
 
-uploaded_file = st.file_uploader("Upload ECG record (.dat + .hea)", type=["dat"])
+uploaded_file = st.file_uploader("Upload .npy", type=["npy"])
 if uploaded_file is not None:
     # Save uploaded file temporarily
     with open("temp.dat", "wb") as f:
@@ -28,7 +28,7 @@ if uploaded_file is not None:
 
     # Read the ECG signal
     record = wfdb.rdrecord("temp", sampto=5000)  # sampto for demo segment
-    signal = record.p_signal[:, 0]  # first lead
+    signal = np.load(uploaded_file)  # first lead
 
     st.line_chart(signal)
 
