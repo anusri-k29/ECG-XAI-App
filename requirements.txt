@@ -6,3 +6,5 @@ matplotlib
 scikit-learn
 joblib
 wfdb
+scipy
+shap
