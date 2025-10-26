@@ -11,70 +11,61 @@ model = tf.keras.models.load_model("model_files/ecg_cnn_model.keras")
 scaler = joblib.load("model_files/scaler.pkl")
 class_names = joblib.load("model_files/class_names.pkl")
 
-st.title("🫀 ECG Classification + Explainable AI Dashboard")
+st.title("🫀 ECG Classification + Explainable AI (NumPy Version)")
+st.write("Upload a `.npy` ECG signal file to classify and explain results.")
 
 # -----------------------
-# Upload ECG File (.npy)
+# Upload ECG File
 # -----------------------
-uploaded_file = st.file_uploader("Upload your ECG file (.npy format)", type=["npy"])
+uploaded_file = st.file_uploader("Upload your ECG file (.npy)", type=["npy"])
 
 if uploaded_file is not None:
-    try:
-        # Load ECG signal
-        signal = np.load(uploaded_file)
+    # Load the signal
+    signal = np.load(uploaded_file)
 
-        # Flatten if multi-dimensional
-        signal = np.squeeze(signal)
+    # Handle different shapes safely
+    signal = np.squeeze(signal)  # remove extra dimensions
+    st.subheader("📈 Raw ECG Signal (first 2000 samples)")
+    st.line_chart(signal[:2000])
 
-        # Ensure 1D array
-        if signal.ndim != 1:
-            st.error("Uploaded file must contain a 1D ECG signal (single lead).")
-            st.stop()
+    # -----------------------
+    # Preprocess
+    # -----------------------
+    # Model expects 200 points
+    if len(signal) > 200:
+        start = np.random.randint(0, len(signal) - 200)
+        signal_segment = signal[start:start + 200]
+    else:
+        signal_segment = np.pad(signal, (0, 200 - len(signal)), 'constant')
 
-        # Display raw signal
-        st.subheader("Uploaded ECG Signal")
-        st.line_chart(signal)
+    # Scale (reshape to 1x200 for scaler)
+    signal_scaled = scaler.transform(signal_segment.reshape(1, -1)).reshape(1, 200, 1)
 
-        # -----------------------
-        # Preprocessing
-        # -----------------------
-        try:
-            # Reshape and scale
-            signal_scaled = scaler.transform(signal.reshape(1, -1)).reshape(1, 200, 1)
-        except Exception as e:
-            st.error(f"Scaling failed: {e}")
-            st.stop()
+    # -----------------------
+    # Prediction
+    # -----------------------
+    pred_prob = model.predict(signal_scaled)[0][0]
+    pred_label = class_names[int(pred_prob >= 0.5)]
 
-        # -----------------------
-        # Prediction
-        # -----------------------
-        pred_prob = model.predict(signal_scaled)[0][0]
-        pred_label = class_names[int(pred_prob >= 0.5)]
+    st.subheader("🧠 Prediction")
+    st.success(f"**Predicted Class:** {pred_label}")
+    st.metric(label="Confidence", value=f"{pred_prob:.2f}")
 
-        st.subheader("Prediction Result")
-        st.success(f"Predicted Class: **{pred_label}** (Confidence: {pred_prob:.2f})")
+    # -----------------------
+    # Simple Explanation
+    # -----------------------
+    diff = signal_segment - np.mean(signal_segment)
+    mean_diff = np.mean(np.abs(diff))
 
-        # -----------------------
-        # Simple Explanation
-        # -----------------------
-        diff = signal_scaled.flatten() - np.mean(signal_scaled)
-        hr_diff = np.mean(np.abs(diff)) * 100
-        explanation = (
-            f"This ECG shows a deviation of approximately {hr_diff:.2f}% "
-            f"from the baseline normal rhythm pattern."
-        )
+    explanation = f"Signal deviation from baseline mean: {mean_diff:.3f}. " \
+                  f"Pattern corresponds to **{pred_label}** according to model."
+    st.info("🩺 **Explanation:**\n" + explanation)
 
-        st.subheader("Explainability Insight")
-        st.info(explanation)
-
-        # -----------------------
-        # Counterfactual (Simulated Normal)
-        # -----------------------
-        st.subheader("Counterfactual: Closest Normal ECG (Demo)")
-        reconstructed_signal = np.mean(signal_scaled) + np.random.normal(0, 0.02, len(signal_scaled.flatten()))
-        st.line_chart(reconstructed_signal)
-
-        st.caption("Simulated 'normal' ECG helps visualize what the healthy signal may look like.")
-
-    except Exception as e:
-        st.error(f"❌ Error processing file: {e}")
+    # Plot processed 200-sample segment
+    st.subheader("🔍 Processed Segment (used for prediction)")
+    fig, ax = plt.subplots()
+    ax.plot(signal_segment)
+    ax.set_title("ECG Segment (200 samples)")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Amplitude")
+    st.pyplot(fig)
