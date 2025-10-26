@@ -14,7 +14,7 @@ scaler = joblib.load("model_files/scaler.pkl")
 class_names = joblib.load("model_files/class_names.pkl")
 
 st.title("🫀 ECG Classification + Explainable AI (WFDB Version)")
-st.write("Upload **.dat** and **.hea** files of the same ECG record.")
+st.write("Upload **.dat** and **.hea** files of the same ECG record (e.g., 101.hea and 101.dat).")
 
 # -----------------------
 # Upload ECG Files
@@ -23,16 +23,16 @@ hea_file = st.file_uploader("Upload the .hea file", type=["hea"])
 dat_file = st.file_uploader("Upload the .dat file", type=["dat"])
 
 if hea_file and dat_file:
-    # Save files temporarily
-    with open("temp.hea", "wb") as f:
+    # Save both files under the same name base
+    with open("uploaded_record.hea", "wb") as f:
         f.write(hea_file.getbuffer())
-    with open("temp.dat", "wb") as f:
+    with open("uploaded_record.dat", "wb") as f:
         f.write(dat_file.getbuffer())
 
     try:
-        # Read the record
-        record = wfdb.rdrecord("temp", sampto=5000)  # read first 5000 samples
-        signal = record.p_signal[:, 0]  # use only first lead
+        # Read the record using the base name
+        record = wfdb.rdrecord("uploaded_record", sampto=5000)
+        signal = record.p_signal[:, 0]  # use only the first ECG lead
 
         st.subheader("📈 Raw ECG Signal (first 2000 samples)")
         st.line_chart(signal[:2000])
@@ -46,7 +46,7 @@ if hea_file and dat_file:
         else:
             signal_segment = np.pad(signal, (0, 200 - len(signal)), 'constant')
 
-        # Scale properly
+        # Scale and reshape
         signal_scaled = scaler.transform(signal_segment.reshape(1, -1)).reshape(1, 200, 1)
 
         # -----------------------
@@ -83,7 +83,7 @@ if hea_file and dat_file:
 
     finally:
         # Clean up temporary files
-        if os.path.exists("temp.hea"):
-            os.remove("temp.hea")
-        if os.path.exists("temp.dat"):
-            os.remove("temp.dat")
+        if os.path.exists("uploaded_record.hea"):
+            os.remove("uploaded_record.hea")
+        if os.path.exists("uploaded_record.dat"):
+            os.remove("uploaded_record.dat")
