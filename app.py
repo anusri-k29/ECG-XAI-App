@@ -40,7 +40,7 @@ if uploaded_file is not None:
         # -----------------------
         try:
             # Reshape and scale
-            signal_scaled = scaler.transform(signal.reshape(-1, 1)).reshape(1, -1, 1)
+            signal_scaled = scaler.transform(signal.reshape(1, -1)).reshape(1, 200, 1)
         except Exception as e:
             st.error(f"Scaling failed: {e}")
             st.stop()
