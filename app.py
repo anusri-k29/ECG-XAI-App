@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import joblib
 import tensorflow as tf
 import scipy.io
+import wfdb
 
 # -----------------------
 # Load Model and Utilities
@@ -17,14 +18,18 @@ st.title("🫀 ECG Classification + Explainable AI")
 # -----------------------
 # Upload .mat File
 # -----------------------
-uploaded_file = st.file_uploader("Upload ECG signal (.mat)", type=["mat"])
 
+
+uploaded_file = st.file_uploader("Upload ECG record (.dat + .hea)", type=["dat"])
 if uploaded_file is not None:
-    mat_data = scipy.io.loadmat(uploaded_file)
-    # Assume signal stored in 'val' key (MIT-BIH standard)
-    signal = mat_data['val'][0] if 'val' in mat_data else list(mat_data.values())[3].flatten()
-    
-    st.subheader("Raw ECG Signal")
+    # Save uploaded file temporarily
+    with open("temp.dat", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    # Read the ECG signal
+    record = wfdb.rdrecord("temp", sampto=5000)  # sampto for demo segment
+    signal = record.p_signal[:, 0]  # first lead
+
     st.line_chart(signal)
 
     # Preprocess like training
