@@ -8,8 +8,7 @@ import os
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import find_peaks
 
-# -----------------------
-# Streamlit Page Config
+
 # -----------------------
 st.set_page_config(page_title="ECG Classification + Explainability", page_icon="🫀", layout="wide")
 st.title("🫀 ECG Classification + Explainable AI (WFDB Version)")
