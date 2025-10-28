@@ -6,7 +6,6 @@ matplotlib
 scikit-learn
 joblib
 wfdb
-scipy
 shap
 transformers
 torch
