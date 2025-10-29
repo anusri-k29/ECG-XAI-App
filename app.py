@@ -25,7 +25,7 @@ try:
     class_names = joblib.load("model_files/class_names.pkl")
     expected_features = scaler.mean_.shape[0]
 except Exception as e:
-    st.error(f"⚠️ Error loading model or scaler: {e}")
+    st.error(f"Error loading model or scaler: {e}")
     st.stop()
 
 st.info(f"Model expects input segments of **{expected_features} samples** per ECG window.")
@@ -95,14 +95,14 @@ if hea_file and dat_file:
             segment_scaled = temp.fit_transform(segment.reshape(-1, 1)).reshape(
                 1, expected_features, 1
             )
-            st.warning("⚠️ Temporary scaling applied.")
+            st.warning("Temporary scaling applied.")
 
         # prediction
         pred_prob = model.predict(segment_scaled)[0][0]
         pred_label = class_names[int(pred_prob >= 0.5)]
         conf = pred_prob if pred_label == class_names[1] else 1 - pred_prob
 
-        st.subheader("🧠 Prediction Results")
+        st.subheader(" Prediction Results")
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Predicted Class", pred_label)
@@ -112,7 +112,7 @@ if hea_file and dat_file:
         # ----------------------------------
         # XAI 1: Autoencoder Reconstruction
         # ----------------------------------
-        st.subheader("🔍 Autoencoder Reconstruction Comparison")
+        st.subheader(" Autoencoder Reconstruction Comparison")
         auto_path = "model_files/autoencoder_model.keras"
         if os.path.exists(auto_path):
             auto_model = tf.keras.models.load_model(auto_path)
@@ -126,7 +126,7 @@ if hea_file and dat_file:
             ax2.set_title("Original vs Reconstructed Signal")
             st.pyplot(fig2)
 
-            st.write("📊 **Difference Metrics:**")
+            st.write(" **Difference Metrics:**")
             st.json(metrics)
         else:
             st.warning("Autoencoder model not found — skipping reconstruction explainability.")
@@ -134,7 +134,7 @@ if hea_file and dat_file:
         # ----------------------------------
         # XAI 2: SHAP Feature Importance
         # ----------------------------------
-        st.subheader("📊 SHAP Feature Importance (Enhanced)")
+        st.subheader("SHAP Feature Importance (Enhanced)")
         try:
             background = segment_scaled + np.random.normal(0, 0.005, size=segment_scaled.shape)
             explainer = shap.GradientExplainer(model, background)
@@ -159,7 +159,7 @@ if hea_file and dat_file:
         # ----------------------------------
         # XAI 3: Saliency Map
         # ----------------------------------
-        st.subheader("🔥 Saliency Map (Model Focus)")
+        st.subheader("Saliency Map (Model Focus)")
         try:
             with tf.GradientTape() as tape:
                 inp = tf.convert_to_tensor(segment_scaled, dtype=tf.float32)
@@ -179,33 +179,39 @@ if hea_file and dat_file:
         except Exception as e:
             st.warning(f"Saliency computation skipped: {e}")
 
-               # ----------------------------------
+        # ----------------------------------
         # P-Q-R-S-T Section Graph with SHAP Overlay
         # ----------------------------------
-        st.subheader("📍 ECG P–Q–R–S–T Section Visualization (with SHAP Overlay)")
+        st.subheader("ECG P–Q–R–S–T Section Visualization (with SHAP Overlay)")
         try:
-            # Regions definition
             regions = {
                 "P_wave": (0, 50),
                 "QRS_complex": (50, 120),
                 "T_wave": (120, 180)
             }
 
-            # Prepare SHAP overlay
-            shap_curve = shap_vals if 'shap_vals' in locals() else np.zeros_like(segment)
-            signal = segment[:200]  # only first 200 samples for clarity
-            shap_scaled = (shap_curve[:200] / np.max(np.abs(shap_curve)+1e-8)) * np.max(np.abs(signal)) * 0.8
+            # Prepare SHAP overlay safely
+            if 'shap_vals' in locals() and len(shap_vals) > 0:
+                shap_curve = shap_vals
+            else:
+                shap_curve = np.zeros_like(segment)
 
-            # Compute region importance (optional display)
+            signal = segment[:200]
+            shap_scaled = (
+                (shap_curve[:200] / (np.max(np.abs(shap_curve)) + 1e-8))
+                * np.max(np.abs(signal))
+                * 0.8
+            )
+
+            # Compute region-wise SHAP importance
             region_importance = {}
             for region, (start, end) in regions.items():
                 mean_val = np.mean(np.abs(shap_curve[start:end]))
-                region_importance[region] = mean_val
+                region_importance[region] = float(mean_val)
 
-            st.write("📊 **Region-wise |SHAP| importance:**")
+            st.write("**Region-wise |SHAP| importance:**")
             st.json(region_importance)
 
-            # Plot ECG + SHAP overlay + region highlights
             fig5, ax5 = plt.subplots(figsize=(12, 4))
             ax5.plot(signal, color='black', linewidth=1.2, label='ECG Signal')
             ax5.plot(shap_scaled, color='red', alpha=0.6, label='SHAP Influence (scaled)')
@@ -220,3 +226,11 @@ if hea_file and dat_file:
 
         except Exception as e:
             st.warning(f"Section visualization skipped: {e}")
+
+    except Exception as e:
+        st.error(f"Error reading or processing ECG file: {e}")
+
+    finally:
+        for p in [hea_path, dat_path]:
+            if os.path.exists(p):
+                os.remove(p)
