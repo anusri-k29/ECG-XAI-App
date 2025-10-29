@@ -14,7 +14,9 @@ plt.rcParams["figure.figsize"] = (8, 3)
 # ----------------------------------
 st.set_page_config(page_title="ECG Classification + Explainability", page_icon="🫀", layout="wide")
 st.title("🫀 ECG Classification + Explainable AI (WFDB Version)")
-st.write("Upload your **.hea** and **.dat** ECG record files (e.g., `108.hea` and `108.dat`).")
+st.write("Upload your **.hea** and **.dat** ECG record files.")
+st.caption("ℹ️ `.hea` (header) and `.dat` (data) files together store the ECG recording — the header has metadata like sampling rate, and the `.dat` file has the raw waveform signal.")
+
 
 # ----------------------------------
 # Load model
@@ -113,6 +115,7 @@ if hea_file and dat_file:
         # XAI 1: Autoencoder Reconstruction
         # ----------------------------------
         st.subheader(" Autoencoder Reconstruction Comparison")
+        st.caption(" The Autoencoder compares your ECG with its learned 'normal' pattern to highlight how far it differs from a healthy heartbeat.")
         auto_path = "model_files/autoencoder_model.keras"
         if os.path.exists(auto_path):
             auto_model = tf.keras.models.load_model(auto_path)
@@ -135,6 +138,8 @@ if hea_file and dat_file:
         # XAI 2: SHAP Feature Importance
         # ----------------------------------
         st.subheader("SHAP Feature Importance (Enhanced)")
+        st.caption(" SHAP explains which parts of your ECG most influenced the model’s decision — red regions mean stronger impact.")
+
         try:
             background = segment_scaled + np.random.normal(0, 0.005, size=segment_scaled.shape)
             explainer = shap.GradientExplainer(model, background)
@@ -160,6 +165,8 @@ if hea_file and dat_file:
         # XAI 3: Saliency Map
         # ----------------------------------
         st.subheader("Saliency Map (Model Focus)")
+        st.caption("The Saliency Map shows which time points the model focused on most when making its prediction.")
+
         try:
             with tf.GradientTape() as tape:
                 inp = tf.convert_to_tensor(segment_scaled, dtype=tf.float32)
@@ -183,6 +190,8 @@ if hea_file and dat_file:
         # P-Q-R-S-T Section Graph with SHAP Overlay
         # ----------------------------------
         st.subheader("ECG P–Q–R–S–T Section Visualization (with SHAP Overlay)")
+        st.caption("This highlights key heartbeat components — P wave, QRS complex, and T wave — and overlays model attention to show which region mattered most.")
+
         try:
             regions = {
                 "P_wave": (0, 50),
