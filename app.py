@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import os
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import find_peaks
-from transformers import pipeline
 import shap
 
 # ----------------------------------
@@ -18,7 +17,7 @@ st.title("🫀 ECG Classification + Explainable AI (WFDB Version)")
 st.write("Upload your **.hea** and **.dat** ECG record files (e.g., `108.hea` and `108.dat`).")
 
 # ----------------------------------
-# Load model & rephraser
+# Load model
 # ----------------------------------
 try:
     model = tf.keras.models.load_model("model_files/ecg_cnn_model.keras")
@@ -30,13 +29,6 @@ except Exception as e:
     st.stop()
 
 st.info(f"Model expects input segments of **{expected_features} samples** per ECG window.")
-
-# cached rephraser
-@st.cache_resource
-def load_rephraser():
-    return pipeline("summarization", model="t5-small", tokenizer="t5-small")
-
-rephraser = load_rephraser()
 
 # ----------------------------------
 # Helper functions
@@ -59,48 +51,6 @@ def compute_basic_diff_metrics(orig, recon, fs=360):
         "hr_orig_bpm": hr_o,
         "hr_recon_bpm": hr_r,
     }
-
-def generate_readable_explanation(metrics, predicted_label):
-    """Rule-based human-friendly explanation"""
-    if predicted_label == "Normal":
-        return (
-            "✅ The ECG signal appears **normal**. "
-            "The waveform pattern, heart rate, and peak rhythm are within expected limits."
-        )
-
-    lines = ["⚠️ The model detected **abnormal heartbeat patterns** based on waveform deviations."]
-    if metrics["mean_abs"] > 0.1:
-        lines.append(
-            f"The ECG waveform differs strongly from normal, suggesting irregular electrical activity (mean deviation {metrics['mean_abs']:.3f})."
-        )
-    else:
-        lines.append(
-            f"The waveform deviation is mild (mean deviation {metrics['mean_abs']:.3f}), possibly early irregularity."
-        )
-
-    hr_diff = abs(metrics["hr_orig_bpm"] - metrics["hr_recon_bpm"])
-    if hr_diff > 15:
-        if metrics["hr_orig_bpm"] > metrics["hr_recon_bpm"]:
-            lines.append(
-                f"The heart rate seems **higher than normal** (~{metrics['hr_orig_bpm']:.1f} bpm vs normal ~{metrics['hr_recon_bpm']:.1f} bpm)."
-            )
-        else:
-            lines.append(
-                f"The heart rate seems **lower than normal** (~{metrics['hr_orig_bpm']:.1f} bpm vs normal ~{metrics['hr_recon_bpm']:.1f} bpm)."
-            )
-    else:
-        lines.append(f"Heart rate appears close to normal (~{metrics['hr_orig_bpm']:.1f} bpm).")
-
-    if metrics["num_peaks_orig"] != metrics["num_peaks_recon"]:
-        lines.append(
-            "The number of detected R-peaks differs, suggesting possible skipped or extra beats."
-        )
-
-    lines.append(
-        "This pattern may reflect an abnormal rhythm or irregular contraction. "
-        "⚕️ Note: This is **not a medical diagnosis**, only an AI-based signal interpretation."
-    )
-    return " ".join(lines)
 
 # ----------------------------------
 # File uploader
@@ -159,14 +109,6 @@ if hea_file and dat_file:
         with col2:
             st.metric("Confidence", f"{conf*100:.2f}%")
 
-        # processed ECG
-        fig1, ax1 = plt.subplots()
-        ax1.plot(segment, color="black")
-        ax1.set_title("Processed ECG Segment (used for prediction)")
-        ax1.set_xlabel("Samples")
-        ax1.set_ylabel("Amplitude")
-        st.pyplot(fig1)
-
         # ----------------------------------
         # XAI 1: Autoencoder Reconstruction
         # ----------------------------------
@@ -186,29 +128,6 @@ if hea_file and dat_file:
 
             st.write("📊 **Difference Metrics:**")
             st.json(metrics)
-
-            # generate and display explanation
-            explanation = generate_readable_explanation(metrics, pred_label)
-            severity = (
-                "high"
-                if metrics["mean_abs"] > 0.15 or abs(metrics["hr_orig_bpm"] - metrics["hr_recon_bpm"]) > 20
-                else "medium"
-                if metrics["mean_abs"] > 0.08
-                else "low"
-            )
-            color = {"high": "red", "medium": "orange", "low": "green"}[severity]
-            st.markdown(f"### 🩺 **Interpretation Summary ({severity.upper()} severity)**")
-            st.markdown(f"<span style='color:{color}'>{explanation}</span>", unsafe_allow_html=True)
-
-            # optional simplifier
-            if st.toggle("🗣 Simplify explanation for general users", value=False):
-                simplified = rephraser(
-                    "summarize: " + explanation,
-                    max_length=80,
-                    min_length=40,
-                    do_sample=False,
-                )[0]["summary_text"]
-                st.info(simplified)
         else:
             st.warning("Autoencoder model not found — skipping reconstruction explainability.")
 
@@ -259,6 +178,28 @@ if hea_file and dat_file:
             st.pyplot(fig4)
         except Exception as e:
             st.warning(f"Saliency computation skipped: {e}")
+
+        # ----------------------------------
+        # P-Q-R-S-T Section Graph
+        # ----------------------------------
+        st.subheader("📍 ECG P–Q–R–S–T Section Visualization")
+        try:
+            regions = {
+                "P_wave": (0, 50),
+                "QRS_complex": (50, 120),
+                "T_wave": (120, 180)
+            }
+
+            fig5, ax5 = plt.subplots(figsize=(10, 4))
+            ax5.plot(segment[:200], color='black', linewidth=1.2, label='ECG Signal')
+            ax5.axvspan(*regions["P_wave"], color='blue', alpha=0.1, label='P wave')
+            ax5.axvspan(*regions["QRS_complex"], color='yellow', alpha=0.2, label='QRS complex')
+            ax5.axvspan(*regions["T_wave"], color='green', alpha=0.1, label='T wave')
+            ax5.legend()
+            ax5.set_title("Annotated ECG Regions (P, QRS, T)")
+            st.pyplot(fig5)
+        except Exception as e:
+            st.warning(f"Section visualization skipped: {e}")
 
     except Exception as e:
         st.error(f"⚠️ Error reading or processing ECG file: {e}")
