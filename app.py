@@ -179,32 +179,44 @@ if hea_file and dat_file:
         except Exception as e:
             st.warning(f"Saliency computation skipped: {e}")
 
+               # ----------------------------------
+        # P-Q-R-S-T Section Graph with SHAP Overlay
         # ----------------------------------
-        # P-Q-R-S-T Section Graph
-        # ----------------------------------
-        st.subheader("📍 ECG P–Q–R–S–T Section Visualization")
+        st.subheader("📍 ECG P–Q–R–S–T Section Visualization (with SHAP Overlay)")
         try:
+            # Regions definition
             regions = {
                 "P_wave": (0, 50),
                 "QRS_complex": (50, 120),
                 "T_wave": (120, 180)
             }
 
-            fig5, ax5 = plt.subplots(figsize=(10, 4))
-            ax5.plot(segment[:200], color='black', linewidth=1.2, label='ECG Signal')
+            # Prepare SHAP overlay
+            shap_curve = shap_vals if 'shap_vals' in locals() else np.zeros_like(segment)
+            signal = segment[:200]  # only first 200 samples for clarity
+            shap_scaled = (shap_curve[:200] / np.max(np.abs(shap_curve)+1e-8)) * np.max(np.abs(signal)) * 0.8
+
+            # Compute region importance (optional display)
+            region_importance = {}
+            for region, (start, end) in regions.items():
+                mean_val = np.mean(np.abs(shap_curve[start:end]))
+                region_importance[region] = mean_val
+
+            st.write("📊 **Region-wise |SHAP| importance:**")
+            st.json(region_importance)
+
+            # Plot ECG + SHAP overlay + region highlights
+            fig5, ax5 = plt.subplots(figsize=(12, 4))
+            ax5.plot(signal, color='black', linewidth=1.2, label='ECG Signal')
+            ax5.plot(shap_scaled, color='red', alpha=0.6, label='SHAP Influence (scaled)')
             ax5.axvspan(*regions["P_wave"], color='blue', alpha=0.1, label='P wave')
             ax5.axvspan(*regions["QRS_complex"], color='yellow', alpha=0.2, label='QRS complex')
             ax5.axvspan(*regions["T_wave"], color='green', alpha=0.1, label='T wave')
             ax5.legend()
-            ax5.set_title("Annotated ECG Regions (P, QRS, T)")
+            ax5.set_title("ECG Signal with SHAP Importance by Region")
+            ax5.set_xlabel("Time Step")
+            ax5.set_ylabel("Amplitude")
             st.pyplot(fig5)
+
         except Exception as e:
             st.warning(f"Section visualization skipped: {e}")
-
-    except Exception as e:
-        st.error(f"⚠️ Error reading or processing ECG file: {e}")
-
-    finally:
-        for p in [hea_path, dat_path]:
-            if os.path.exists(p):
-                os.remove(p)
