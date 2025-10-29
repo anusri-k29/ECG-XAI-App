@@ -138,7 +138,7 @@ if hea_file and dat_file:
         # XAI 2: SHAP Feature Importance
         # ----------------------------------
         st.subheader("SHAP Feature Importance (Enhanced)")
-        st.caption(" SHAP explains which parts of your ECG most influenced the model’s decision — red regions mean stronger impact.")
+        st.caption(" SHAP explains which parts of your ECG most influenced the model’s decision.")
 
         try:
             background = segment_scaled + np.random.normal(0, 0.005, size=segment_scaled.shape)
