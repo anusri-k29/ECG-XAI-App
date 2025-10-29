@@ -116,7 +116,7 @@ if hea_file and dat_file:
         # ----------------------------------
         st.subheader(" Autoencoder Reconstruction Comparison")
         st.caption(" The Autoencoder compares your ECG with its learned 'normal' pattern to highlight how far it differs from a healthy heartbeat.")
-        auto_path = "model_files/autoencoder_model.keras"
+        auto_path = "model_files/autoencoder_model_new.keras"
         if os.path.exists(auto_path):
             auto_model = tf.keras.models.load_model(auto_path)
             recon = auto_model.predict(segment_scaled)
