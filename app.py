@@ -8,7 +8,7 @@ import os
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import find_peaks
 import shap
-
+plt.rcParams["figure.figsize"] = (8, 3)
 # ----------------------------------
 # Streamlit setup
 # ----------------------------------
