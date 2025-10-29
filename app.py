@@ -22,9 +22,9 @@ st.caption("ℹ️ `.hea` (header) and `.dat` (data) files together store the EC
 # Load model
 # ----------------------------------
 try:
-    model = tf.keras.models.load_model("model_files/ecg_cnn_model_new.keras")
-    scaler = joblib.load("model_files/scaler_new.pkl")
-    class_names = joblib.load("model_files/class_names_new.pkl")
+    model = tf.keras.models.load_model("model_files/ecg_cnn_model.keras")
+    scaler = joblib.load("model_files/scaler.pkl")
+    class_names = joblib.load("model_files/class_names.pkl")
     expected_features = scaler.mean_.shape[0]
 except Exception as e:
     st.error(f"Error loading model or scaler: {e}")
