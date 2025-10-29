@@ -13,7 +13,7 @@ plt.rcParams["figure.figsize"] = (8, 3)
 # Streamlit setup
 # ----------------------------------
 st.set_page_config(page_title="ECG Classification + Explainability", page_icon="🫀", layout="wide")
-st.title("🫀 ECG Classification + Explainable AI (WFDB Version)")
+st.title("🫀 ECG Classiifcation using XAI")
 st.write("Upload your **.hea** and **.dat** ECG record files.")
 st.caption("ℹ️ `.hea` (header) and `.dat` (data) files together store the ECG recording — the header has metadata like sampling rate, and the `.dat` file has the raw waveform signal.")
 
