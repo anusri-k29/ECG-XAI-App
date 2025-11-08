@@ -105,11 +105,10 @@ if hea_file and dat_file:
         conf = pred_prob if pred_label == class_names[1] else 1 - pred_prob
 
         st.subheader(" Prediction Results")
-        col1, col2 = st.columns(2)
+        col1 = st.columns(1)
         with col1:
             st.metric("Predicted Class", pred_label)
-        with col2:
-            st.metric("Confidence", f"{conf*100:.2f}%")
+        
 
         # ----------------------------------
         # XAI 1: Autoencoder Reconstruction
